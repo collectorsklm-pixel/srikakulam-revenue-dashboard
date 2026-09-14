@@ -1,0 +1,32 @@
+# .github/workflows/publish.yml
+# Drop the day's PDF into packs/ and commit — this builds and publishes the dashboard.
+name: Publish revenue dashboard
+on:
+  push:
+    paths: ["packs/**", "template.html", "build.py", "extract_snapshot.py"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install pdfplumber
+      - name: Read every pack into data/
+        run: |
+          mkdir -p data
+          for f in packs/*.pdf; do python extract_snapshot.py "$f" data; done
+      - name: Build the public copy
+        run: python build.py data site
+      - run: touch site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site }
+      - id: deployment
+        uses: actions/deploy-pages@v4
